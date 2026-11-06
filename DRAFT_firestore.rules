@@ -1,0 +1,205 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Safety Net (Default-Deny Catch-All)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Hardened Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function isValidRequestTime() {
+      return request.time != null;
+    }
+
+    // Validation Blueprint: Booking
+    function isValidBooking(data) {
+      return data.keys().hasAll([
+        'id',
+        'bookingNumber',
+        'roomId',
+        'departmentId',
+        'title',
+        'date',
+        'startTime',
+        'endTime',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+      data.bookingNumber is string && data.bookingNumber.size() >= 3 && data.bookingNumber.size() <= 60 &&
+      data.roomId is string && data.roomId.size() >= 1 && data.roomId.size() <= 128 &&
+      data.departmentId is string && data.departmentId.size() >= 1 && data.departmentId.size() <= 128 &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 500 &&
+      data.date is string && data.date.size() == 10 &&
+      data.startTime is string && data.startTime.size() == 5 &&
+      data.endTime is string && data.endTime.size() == 5 &&
+      data.status is string && (
+        data.status == 'available' ||
+        data.status == 'pending' ||
+        data.status == 'confirmed' ||
+        data.status == 'cancelled' ||
+        data.status == 'completed' ||
+        data.status == 'rejected'
+      ) &&
+      data.createdAt is string && data.createdAt.size() >= 10 && data.createdAt.size() <= 64 &&
+      data.updatedAt is string && data.updatedAt.size() >= 10 && data.updatedAt.size() <= 64;
+    }
+
+    // Validation Blueprint: Room
+    function isValidRoom(data) {
+      return data.keys().hasAll(['id', 'nameAr', 'nameEn', 'code', 'status']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.nameAr is string && data.nameAr.size() >= 1 && data.nameAr.size() <= 200 &&
+        data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 200 &&
+        data.code is string && data.code.size() >= 1 && data.code.size() <= 64 &&
+        data.status is string && (
+          data.status == 'available' ||
+          data.status == 'occupied' ||
+          data.status == 'maintenance' ||
+          data.status == 'disabled'
+        );
+    }
+
+    // Validation Blueprint: Department
+    function isValidDepartment(data) {
+      return data.keys().hasAll(['id', 'nameAr', 'nameEn', 'code', 'status']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.nameAr is string && data.nameAr.size() >= 1 && data.nameAr.size() <= 250 &&
+        data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 250 &&
+        data.code is string && data.code.size() >= 1 && data.code.size() <= 64 &&
+        data.status is string && (data.status == 'active' || data.status == 'inactive');
+    }
+
+    // Validation Blueprint: User
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'employeeId', 'fullName', 'email', 'role', 'status']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.employeeId is string && data.employeeId.size() >= 1 && data.employeeId.size() <= 100 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 200 &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 200 &&
+        data.role is string && (
+          data.role == 'super_admin' ||
+          data.role == 'admin' ||
+          data.role == 'coordinator' ||
+          data.role == 'employee' ||
+          data.role == 'viewer'
+        ) &&
+        data.status is string && (data.status == 'active' || data.status == 'inactive');
+    }
+
+    // Validation Blueprint: SystemSettings
+    function isValidSetting(data) {
+      return data.keys().hasAll([
+        'companyNameAr',
+        'companyNameEn',
+        'systemNameAr',
+        'systemNameEn',
+        'timezone',
+        'operatingHoursStart',
+        'operatingHoursEnd'
+      ]) &&
+      data.companyNameAr is string && data.companyNameAr.size() >= 1 && data.companyNameAr.size() <= 200 &&
+      data.companyNameEn is string && data.companyNameEn.size() >= 1 && data.companyNameEn.size() <= 200 &&
+      data.systemNameAr is string && data.systemNameAr.size() >= 1 && data.systemNameAr.size() <= 200 &&
+      data.systemNameEn is string && data.systemNameEn.size() >= 1 && data.systemNameEn.size() <= 200 &&
+      data.timezone is string && data.timezone.size() >= 1 && data.timezone.size() <= 100 &&
+      data.operatingHoursStart is string && data.operatingHoursStart.size() == 5 &&
+      data.operatingHoursEnd is string && data.operatingHoursEnd.size() == 5;
+    }
+
+    // Validation Blueprint: Holiday
+    function isValidHoliday(data) {
+      return data.keys().hasAll(['id', 'nameAr', 'nameEn', 'date', 'status']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.nameAr is string && data.nameAr.size() >= 1 && data.nameAr.size() <= 200 &&
+        data.nameEn is string && data.nameEn.size() >= 1 && data.nameEn.size() <= 200 &&
+        data.date is string && data.date.size() == 10 &&
+        data.status is string && (data.status == 'active' || data.status == 'inactive');
+    }
+
+    // Validation Blueprint: AuditLog
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'userId', 'userName', 'action', 'entity', 'entityId', 'details', 'timestamp']) &&
+        data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+        data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+        data.userName is string && data.userName.size() >= 1 && data.userName.size() <= 200 &&
+        data.action is string && data.action.size() >= 1 && data.action.size() <= 64 &&
+        data.entity is string && data.entity.size() >= 1 && data.entity.size() <= 64 &&
+        data.entityId is string && data.entityId.size() >= 1 && data.entityId.size() <= 128 &&
+        data.details is string && data.details.size() >= 1 && data.details.size() <= 2000 &&
+        data.timestamp is string && data.timestamp.size() >= 10 && data.timestamp.size() <= 64;
+    }
+
+    // Connection Health Check
+    match /test/{testId} {
+      allow get: if isValidId(testId);
+    }
+
+    // Collection: /bookings/{bookingId}
+    match /bookings/{bookingId} {
+      allow get: if isValidId(bookingId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(bookingId) && isValidBooking(incoming());
+      allow delete: if isValidId(bookingId);
+    }
+
+    // Collection: /rooms/{roomId}
+    match /rooms/{roomId} {
+      allow get: if isValidId(roomId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(roomId) && isValidRoom(incoming());
+      allow delete: if isValidId(roomId);
+    }
+
+    // Collection: /departments/{departmentId}
+    match /departments/{departmentId} {
+      allow get: if isValidId(departmentId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(departmentId) && isValidDepartment(incoming());
+      allow delete: if isValidId(departmentId);
+    }
+
+    // Collection: /users/{userId}
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(userId) && isValidUser(incoming());
+      allow delete: if isValidId(userId);
+    }
+
+    // Collection: /settings/{settingId}
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(settingId) && isValidSetting(incoming());
+      allow delete: if isValidId(settingId);
+    }
+
+    // Collection: /holidays/{holidayId}
+    match /holidays/{holidayId} {
+      allow get: if isValidId(holidayId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(holidayId) && isValidHoliday(incoming());
+      allow delete: if isValidId(holidayId);
+    }
+
+    // Collection: /auditLogs/{logId}
+    match /auditLogs/{logId} {
+      allow get: if isValidId(logId);
+      allow list: if isValidRequestTime();
+      allow create, update: if isValidId(logId) && isValidAuditLog(incoming());
+      allow delete: if isValidId(logId);
+    }
+  }
+}

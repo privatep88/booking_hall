@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" fill="none" class="w-full h-auto">
+  <defs>
+    <!-- Red gradient for text -->
+    <linearGradient id="saaedRedGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C24128" />
+      <stop offset="50%" stop-color="#A53826" />
+      <stop offset="100%" stop-color="#7B2418" />
+    </linearGradient>
+    <!-- Blue gradient for upper highway curve -->
+    <linearGradient id="saaedUpperBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#312E81" />
+      <stop offset="40%" stop-color="#1E3A8A" />
+      <stop offset="100%" stop-color="#1D4ED8" />
+    </linearGradient>
+    <!-- Blue gradient for center highway lane -->
+    <linearGradient id="saaedMidBlue" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1E40AF" />
+      <stop offset="50%" stop-color="#0284C7" />
+      <stop offset="100%" stop-color="#0369A1" />
+    </linearGradient>
+    <!-- Blue gradient for lower road sweep -->
+    <linearGradient id="saaedLowerBlue" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1D4ED8" />
+      <stop offset="70%" stop-color="#2563EB" />
+      <stop offset="100%" stop-color="#1E3A8A" />
+    </linearGradient>
+  </defs>
+
+  <!-- Typography: SAAED and ساعد -->
+  <g id="typography">
+    <!-- SAAED Latin brand -->
+    <text x="160" y="65" font-family="'Cairo', 'Inter', sans-serif" font-weight="900" font-size="44" fill="url(#saaedRedGrad)" letter-spacing="3">SAAED</text>
+    <!-- ساعد Arabic brand -->
+    <text x="405" y="66" font-family="'Cairo', 'Amiri', 'Traditional Arabic', serif" font-weight="900" font-size="52" fill="url(#saaedRedGrad)" letter-spacing="2" direction="rtl">ساعد</text>
+  </g>
+
+  <!-- Stylized Highway / Dynamic Roadway Mark -->
+  <g id="roadway-swoosh">
+    <!-- Top Lane Band -->
+    <path d="M 12 112 C 160 116, 320 102, 575 80 C 440 92, 290 106, 85 125 Z" fill="url(#saaedUpperBlue)" />
+    
+    <!-- Upper Main Sweeping Road Strip -->
+    <path d="M 8 114 C 180 120, 360 104, 580 80 C 420 108, 260 134, 155 186 C 90 156, 35 130, 8 114 Z" fill="url(#saaedMidBlue)" />
+    
+    <!-- White Curved Road Divider Stripe 1 -->
+    <path d="M 120 146 C 240 124, 390 100, 580 80 C 400 102, 250 128, 125 152 Z" fill="#FFFFFF" />
+    
+    <!-- White Curved Road Divider Stripe 2 -->
+    <path d="M 180 180 C 290 144, 430 108, 578 80 C 440 112, 300 150, 192 188 Z" fill="#FFFFFF" />
+
+    <!-- Lower Road Swoosh Wing -->
+    <path d="M 195 190 C 285 160, 420 120, 578 80 C 450 126, 320 184, 230 226 C 215 212, 204 200, 195 190 Z" fill="url(#saaedLowerBlue)" />
+  </g>
+</svg>

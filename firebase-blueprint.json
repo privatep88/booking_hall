@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "Booking": {
+      "title": "Booking",
+      "description": "Meeting room booking record for Al Dana and Al Waha halls.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "bookingNumber": { "type": "string", "minLength": 3, "maxLength": 60 },
+        "roomId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "roomNameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "roomNameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "departmentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "departmentNameAr": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "departmentNameEn": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "meetingType": { "type": "string" },
+        "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "startTime": { "type": "string", "minLength": 5, "maxLength": 5 },
+        "endTime": { "type": "string", "minLength": 5, "maxLength": 5 },
+        "durationMinutes": { "type": "number" },
+        "bookerName": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "bookerEmail": { "type": "string" },
+        "bookerPhone": { "type": "string" },
+        "attendeesCount": { "type": "number" },
+        "confidential": { "type": "boolean" },
+        "equipmentRequested": { "type": "array", "items": { "type": "string" } },
+        "status": {
+          "type": "string",
+          "enum": ["available", "pending", "confirmed", "cancelled", "completed", "rejected"]
+        },
+        "createdAt": { "type": "string", "minLength": 10, "maxLength": 64 },
+        "updatedAt": { "type": "string", "minLength": 10, "maxLength": 64 }
+      },
+      "required": [
+        "id",
+        "bookingNumber",
+        "roomId",
+        "departmentId",
+        "title",
+        "date",
+        "startTime",
+        "endTime",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Room": {
+      "title": "Room",
+      "description": "Corporate conference room definition and status.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "nameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "nameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "status": {
+          "type": "string",
+          "enum": ["available", "occupied", "maintenance", "disabled"]
+        }
+      },
+      "required": ["id", "nameAr", "nameEn", "code", "status"]
+    },
+    "Department": {
+      "title": "Department",
+      "description": "Official corporate department authorized to book meeting rooms.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "nameAr": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "nameEn": { "type": "string", "minLength": 1, "maxLength": 250 },
+        "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      },
+      "required": ["id", "nameAr", "nameEn", "code", "status"]
+    },
+    "User": {
+      "title": "User",
+      "description": "System user and role assignment.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "employeeId": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "fullName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 200 },
+        "role": {
+          "type": "string",
+          "enum": ["super_admin", "admin", "coordinator", "employee", "viewer"]
+        },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      },
+      "required": ["id", "employeeId", "fullName", "email", "role", "status"]
+    },
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Global system configuration and admin exceptions.",
+      "type": "object",
+      "properties": {
+        "companyNameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "companyNameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "systemNameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "systemNameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "operatingHoursStart": { "type": "string", "minLength": 5, "maxLength": 5 },
+        "operatingHoursEnd": { "type": "string", "minLength": 5, "maxLength": 5 }
+      },
+      "required": [
+        "companyNameAr",
+        "companyNameEn",
+        "systemNameAr",
+        "systemNameEn",
+        "timezone",
+        "operatingHoursStart",
+        "operatingHoursEnd"
+      ]
+    },
+    "Holiday": {
+      "title": "Holiday",
+      "description": "Official holiday calendar entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "nameAr": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "nameEn": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "date": { "type": "string", "minLength": 10, "maxLength": 10 },
+        "status": { "type": "string", "enum": ["active", "inactive"] }
+      },
+      "required": ["id", "nameAr", "nameEn", "date", "status"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System audit log record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "userName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "action": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "entity": { "type": "string", "minLength": 1, "maxLength": 64 },
+        "entityId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "details": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "timestamp": { "type": "string", "minLength": 10, "maxLength": 64 }
+      },
+      "required": ["id", "userId", "userName", "action", "entity", "entityId", "details", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Stores meeting room bookings synchronized across all clients."
+    },
+    "/rooms/{roomId}": {
+      "schema": { "$ref": "#/entities/Room" },
+      "description": "Stores conference room configurations."
+    },
+    "/departments/{departmentId}": {
+      "schema": { "$ref": "#/entities/Department" },
+      "description": "Stores official corporate departments."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores system users and roles."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/SystemSettings" },
+      "description": "Stores global system settings and admin exception policies."
+    },
+    "/holidays/{holidayId}": {
+      "schema": { "$ref": "#/entities/Holiday" },
+      "description": "Stores official holidays."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Stores system audit trail entries."
+    }
+  }
+}

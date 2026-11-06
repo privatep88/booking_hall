@@ -1,0 +1,134 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: 'Cairo', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Improve touch accessibility on buttons & interactive elements */
+  button, 
+  a, 
+  input, 
+  select, 
+  textarea {
+    touch-action: manipulation;
+  }
+
+  /* Prevent automatic iOS Safari zoom on focus when font-size is < 16px */
+  @media screen and (max-width: 768px) {
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"],
+    input[type="number"],
+    input[type="date"],
+    input[type="time"],
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Standard Natural System Cursors */
+button:not(:disabled),
+a,
+select:not(:disabled),
+summary,
+[role="button"]:not([aria-disabled="true"]):not([disabled]),
+.cursor-pointer {
+  cursor: pointer;
+}
+
+button:disabled,
+button[disabled],
+input:disabled,
+[disabled],
+[aria-disabled="true"],
+.cursor-not-allowed {
+  cursor: not-allowed;
+}
+
+.cursor-wait,
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* Custom Scrollbar for cross-browser enterprise feel (WebKit & Firefox) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Hide scrollbar utility for clean touch swipe rows */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Responsive Table Wrapper with soft scroll indicator */
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area insets for modern mobile browsers (iOS notch & Android bar) */
+.safe-pb {
+  padding-bottom: env(safe-area-inset-bottom, 1rem);
+}
+.safe-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Print specific styles for corporate reports */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .print-page-break {
+    page-break-after: always;
+  }
+  .print-card {
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "نظام إدارة وحجز قاعات الاجتماعات - ساعد للأنظمة المرورية",
+  "description": "نظام مؤسسي متكامل لإدارة وحجز وتحليل استخدام قاعات الاجتماعات لشركة ساعد للأنظمة المرورية مع منع التعارض والتقارير التنفيذية",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
