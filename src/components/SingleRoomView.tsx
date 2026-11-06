@@ -47,6 +47,8 @@ import {
   formatTimeRange12,
   timeToMinutes
 } from '../utils/dateUtils';
+import heroWahaImg from '../assets/images/hero_conference_room_waha_1793953314083.jpg';
+import heroCleanImg from '../assets/images/hero_conference_room_clean_1793953313123.jpg';
 
 interface SingleRoomViewProps {
   roomId: string;
@@ -60,17 +62,17 @@ interface SingleRoomViewProps {
 
 const HERO_SLIDES = [
   {
-    image: '/src/assets/images/hero_conference_room_waha_1793953314083.jpg',
+    image: heroWahaImg,
     tvBox: { x: 606, y: 277, width: 191, height: 114 },
     logoBox: { x: 626, y: 293, width: 151, height: 82 }
   },
   {
-    image: '/src/assets/images/hero_conference_room_clean_1793953313123.jpg',
+    image: heroCleanImg,
     tvBox: { x: 578, y: 265, width: 224, height: 130 },
     logoBox: { x: 604, y: 283, width: 172, height: 94 }
   },
   {
-    image: '/src/assets/images/hero_conference_room_waha_1793953314083.jpg',
+    image: heroWahaImg,
     tvBox: { x: 606, y: 277, width: 191, height: 114 },
     logoBox: { x: 626, y: 293, width: 151, height: 82 }
   }
@@ -623,7 +625,7 @@ export const SingleRoomView: React.FC<SingleRoomViewProps> = ({
 
           {/* Original Attached SAAED Logo Centered Inside the Television Screen */}
           <image
-            href="/assets/aistudio/logo_1afd1154.png"
+            href={`${import.meta.env.BASE_URL || '/'}assets/aistudio/logo_1afd1154.png`}
             x={activeSlide.logoBox.x}
             y={activeSlide.logoBox.y}
             width={activeSlide.logoBox.width}

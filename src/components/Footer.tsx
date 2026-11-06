@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { ShieldCheck } from 'lucide-react';
+import heroWahaImg from '../assets/images/hero_conference_room_waha_1793953314083.jpg';
 
 export const Footer: React.FC = () => {
   const { language } = useApp();
@@ -12,7 +13,7 @@ export const Footer: React.FC = () => {
       <div
         className="absolute inset-0 opacity-20 pointer-events-none bg-cover bg-center"
         style={{
-          backgroundImage: `url('/src/assets/images/hero_conference_room_waha_1793953314083.jpg')`,
+          backgroundImage: `url("${heroWahaImg}")`,
           filter: 'blur(2px) brightness(0.45) contrast(1.2)'
         }}
       />

@@ -9,14 +9,15 @@ interface SaaedLogoProps {
 export const SaaedLogo: React.FC<SaaedLogoProps> = ({
   className = 'h-10 w-auto'
 }) => {
+  const baseUrl = import.meta.env.BASE_URL || '/';
   return (
     <div className={`inline-flex items-center select-none ${className}`}>
       <img
-        src="/assets/aistudio/logo_1afd1154.png"
+        src={`${baseUrl}assets/aistudio/logo_1afd1154.png`}
         onError={(e) => {
           const target = e.target as HTMLImageElement;
-          if (!target.src.endsWith('/new-logo.png')) {
-            target.src = '/new-logo.png';
+          if (!target.src.endsWith('new-logo.png')) {
+            target.src = `${baseUrl}new-logo.png`;
           }
         }}
         alt="شعار شركة ساعد للأنظمة المرورية - SAAED"

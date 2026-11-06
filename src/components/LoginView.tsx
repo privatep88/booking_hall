@@ -50,7 +50,7 @@ export const LoginView: React.FC = () => {
          ===================================================================== */}
       <div className="hidden lg:block absolute inset-0 pointer-events-none overflow-hidden select-none">
         <img
-          src="/assets/aistudio/login_clean_bg.png"
+          src={`${import.meta.env.BASE_URL || '/'}assets/aistudio/login_clean_bg.png`}
           alt="قاعة الاجتماعات التنفيذية - ساعد للأنظمة المرورية"
           className="w-full h-full object-cover object-left"
         />
@@ -61,7 +61,7 @@ export const LoginView: React.FC = () => {
          ===================================================================== */}
       <div className="lg:hidden relative w-full h-64 sm:h-80 overflow-hidden shrink-0 bg-[#123D70]">
         <img
-          src="/assets/aistudio/login_room_mobile.png"
+          src={`${import.meta.env.BASE_URL || '/'}assets/aistudio/login_room_mobile.png`}
           alt="قاعة الاجتماعات التنفيذية"
           className="w-full h-full object-cover object-center select-none pointer-events-none"
         />
@@ -103,7 +103,7 @@ export const LoginView: React.FC = () => {
               </div>
             </div>
             <img
-              src="/assets/aistudio/login_logo_icon.png"
+              src={`${import.meta.env.BASE_URL || '/'}assets/aistudio/login_logo_icon.png`}
               alt="شعار ساعد للأنظمة المرورية"
               className="w-8 h-8 sm:w-9 sm:h-9 object-contain shrink-0 select-none"
             />
@@ -151,7 +151,7 @@ export const LoginView: React.FC = () => {
           </div>
         </div>
         <img
-          src="/assets/aistudio/login_logo_icon.png"
+          src={`${import.meta.env.BASE_URL || '/'}assets/aistudio/login_logo_icon.png`}
           alt="ساعد للأنظمة المرورية - SAAED TRAFFIC SYSTEMS"
           className="w-[56px] h-[56px] xl:w-[66px] xl:h-[66px] object-contain shrink-0 select-none"
         />
