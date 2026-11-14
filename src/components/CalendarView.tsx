@@ -35,7 +35,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const { bookings, rooms, currentDate, language, settings } = useApp();
 
-  const [activeRoomTab, setActiveRoomTab] = useState<'all' | 'room-dana' | 'room-waha'>('all');
+  const [activeRoomTab, setActiveRoomTab] = useState<'all' | string>('all');
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'week' | 'day' | 'agenda'>('month');
 
   // Base date for navigation dynamically parsed from actual currentDate
@@ -212,7 +212,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
 
           {/* Room Filter Selector */}
-          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 self-start md:self-auto">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200 self-start md:self-auto flex-wrap">
             <button
               onClick={() => setActiveRoomTab('all')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -223,26 +223,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             >
               جميع القاعات
             </button>
-            <button
-              onClick={() => setActiveRoomTab('room-dana')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeRoomTab === 'room-dana'
-                  ? 'bg-blue-700 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              قاعة الدانة
-            </button>
-            <button
-              onClick={() => setActiveRoomTab('room-waha')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                activeRoomTab === 'room-waha'
-                  ? 'bg-indigo-700 text-white shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              قاعة الواحة
-            </button>
+            {rooms.map((r) => (
+              <button
+                key={r.id}
+                onClick={() => setActiveRoomTab(r.id)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  activeRoomTab === r.id
+                    ? r.id === 'room-waha'
+                      ? 'bg-indigo-700 text-white shadow-2xs'
+                      : 'bg-blue-700 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {r.nameAr.startsWith('قاعة') ? r.nameAr : `قاعة ${r.nameAr}`}
+              </button>
+            ))}
           </div>
         </div>
 

@@ -17,13 +17,21 @@ import { AdminExceptionsView } from './components/AdminExceptionsView';
 import { BookingForm } from './components/BookingForm';
 import { BookingDetailsModal } from './components/BookingDetailsModal';
 import { LoginView } from './components/LoginView';
+import { GlobalMeetingNotificationProvider } from './components/GlobalMeetingNotificationProvider';
 import { Booking } from './types';
 import { ShieldAlert } from 'lucide-react';
 
 const MainApp: React.FC = () => {
-  const { currentUser, isAuthenticated } = useApp();
+  const { currentUser, isAuthenticated, rooms } = useApp();
   const isAdmin = currentUser.role === 'super_admin' || currentUser.role === 'admin';
   const [activeView, setActiveView] = useState<string>('dana');
+
+  const activeSingleRoom = rooms.find(
+    (r) =>
+      (r.id === 'room-dana' && (activeView === 'dana' || activeView === 'dashboard')) ||
+      (r.id === 'room-waha' && activeView === 'waha') ||
+      r.id === activeView
+  );
   
   // Modals state
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -35,6 +43,7 @@ const MainApp: React.FC = () => {
 
   // Details modal
   const [detailsBooking, setDetailsBooking] = useState<Booking | null>(null);
+  const [highlightedBookingId, setHighlightedBookingId] = useState<string | null>(null);
 
   // Kiosk mode room ID
   const [kioskRoomId, setKioskRoomId] = useState<string>('room-dana');
@@ -68,19 +77,33 @@ const MainApp: React.FC = () => {
     setActiveView('kiosk');
   };
 
+  const handleNavigateToBookingsArchive = (bookingId: string) => {
+    setActiveView('bookings');
+    setHighlightedBookingId(bookingId);
+    window.setTimeout(() => {
+      setHighlightedBookingId((current) => (current === bookingId ? null : current));
+    }, 10000);
+  };
+
   if (!isAuthenticated) {
     return <LoginView />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
-      
-      {/* Top Header */}
-      <Header
-        activeView={activeView}
-        setActiveView={setActiveView}
-        onOpenNewBooking={() => handleOpenNewBooking()}
-      />
+    <GlobalMeetingNotificationProvider
+      isSensitiveModalOpen={isBookingModalOpen || Boolean(detailsBooking)}
+      onOpenBookingDetails={(b) => setDetailsBooking(b)}
+      onNavigateToBookingsArchive={handleNavigateToBookingsArchive}
+    >
+      <div className="min-h-screen bg-slate-100/70 text-slate-800 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
+        
+        {/* Top Header */}
+        <Header
+          activeView={activeView}
+          setActiveView={setActiveView}
+          onOpenNewBooking={() => handleOpenNewBooking()}
+          onSelectBooking={(b) => setDetailsBooking(b)}
+        />
 
       {/* Navigation Bar (hidden in kiosk mode for authentic display feel) */}
       {activeView !== 'kiosk' && (
@@ -94,36 +117,10 @@ const MainApp: React.FC = () => {
       {/* Main Container */}
       <main className="w-full flex-1">
         
-        {/* Tab 1: Al Dana Hall with internal bookings and actions */}
-        {activeView === 'dana' && (
+        {/* Single Room View (Al Dana, Al Waha, or any dynamically added Room) */}
+        {activeSingleRoom && (
           <SingleRoomView
-            roomId="room-dana"
-            onOpenNewBooking={(roomId, date, startTime) => handleOpenNewBooking(roomId, date, startTime)}
-            onSelectBooking={(b) => setDetailsBooking(b)}
-            onEditBooking={(b) => handleEditBooking(b)}
-            onViewStats={() => setActiveView('analytics')}
-            onOpenKiosk={(roomId) => handleOpenKiosk(roomId)}
-            onNavigateToCalendar={() => setActiveView('calendar')}
-          />
-        )}
-
-        {/* Tab 2: Al Waha Hall with internal bookings and actions */}
-        {activeView === 'waha' && (
-          <SingleRoomView
-            roomId="room-waha"
-            onOpenNewBooking={(roomId, date, startTime) => handleOpenNewBooking(roomId, date, startTime)}
-            onSelectBooking={(b) => setDetailsBooking(b)}
-            onEditBooking={(b) => handleEditBooking(b)}
-            onViewStats={() => setActiveView('analytics')}
-            onOpenKiosk={(roomId) => handleOpenKiosk(roomId)}
-            onNavigateToCalendar={() => setActiveView('calendar')}
-          />
-        )}
-
-        {/* Legacy / Auxiliary Dashboard View */}
-        {activeView === 'dashboard' && (
-          <SingleRoomView
-            roomId="room-dana"
+            roomId={activeSingleRoom.id}
             onOpenNewBooking={(roomId, date, startTime) => handleOpenNewBooking(roomId, date, startTime)}
             onSelectBooking={(b) => setDetailsBooking(b)}
             onEditBooking={(b) => handleEditBooking(b)}
@@ -134,7 +131,7 @@ const MainApp: React.FC = () => {
         )}
 
         {/* Other Tabs inside centered container */}
-        {activeView !== 'dana' && activeView !== 'waha' && activeView !== 'dashboard' && (
+        {!activeSingleRoom && (
           <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Tab 3: All Analytics / Comprehensive Statistics */}
             {activeView === 'analytics' && (
@@ -158,6 +155,15 @@ const MainApp: React.FC = () => {
                   onOpenNewBooking={(roomId?: string, deptId?: string) => handleOpenNewBooking(roomId, undefined, undefined, deptId)}
                   onOpenDanaBooking={(deptId?: string) => handleOpenNewBooking('room-dana', undefined, undefined, deptId)}
                   onOpenWahaBooking={(deptId?: string) => handleOpenNewBooking('room-waha', undefined, undefined, deptId)}
+                  onNavigateToRoom={(roomId: string) =>
+                    setActiveView(
+                      roomId === 'room-dana'
+                        ? 'dana'
+                        : roomId === 'room-waha'
+                        ? 'waha'
+                        : roomId
+                    )
+                  }
                 />
               ) : (
                 <div className="max-w-xl mx-auto my-12 bg-white rounded-2xl border border-amber-200 p-8 text-center space-y-4 shadow-sm animate-in fade-in">
@@ -207,6 +213,7 @@ const MainApp: React.FC = () => {
                 onSelectBooking={(b) => setDetailsBooking(b)}
                 onOpenNewBooking={() => handleOpenNewBooking()}
                 onEditBooking={(b) => handleEditBooking(b)}
+                highlightedBookingId={highlightedBookingId}
               />
             )}
 
@@ -300,7 +307,8 @@ const MainApp: React.FC = () => {
         onEdit={handleEditBooking}
       />
 
-    </div>
+      </div>
+    </GlobalMeetingNotificationProvider>
   );
 };
 

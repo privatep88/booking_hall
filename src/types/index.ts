@@ -189,3 +189,32 @@ export interface SystemSettings {
   requireCheckIn: boolean;
   adminExceptions?: AdminExceptionsConfig;
 }
+
+export type MeetingLifecycleState = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+
+export interface MeetingCompletionNotification {
+  eventKey: string;
+  bookingId: string;
+  bookingNumber: string;
+  roomId: string;
+  roomNameAr: string;
+  roomNameEn: string;
+  title: string;
+  departmentId: string;
+  departmentNameAr: string;
+  bookerName: string;
+  employeeId: string;
+  userId: string;
+  confidential: boolean;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  scheduledEndIso: string;
+  completedAtActual: string;
+  isRead: boolean;
+  isAcknowledged: boolean;
+  isCleared: boolean;
+  createdAt: string;
+}
+

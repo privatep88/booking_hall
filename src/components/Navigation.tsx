@@ -20,24 +20,25 @@ export const Navigation: React.FC<NavigationProps> = ({
   setActiveView,
   onOpenNewBooking
 }) => {
-  const { language, currentUser } = useApp();
+  const { language, currentUser, rooms } = useApp();
   const isAdmin = currentUser.role === 'super_admin' || currentUser.role === 'admin';
 
-  const navItems = [
-    {
-      id: 'dana',
-      labelAr: 'قاعة الدانة',
-      labelEn: 'Al Dana Room',
-      icon: Building2,
-      code: 'DANA-01'
-    },
-    {
-      id: 'waha',
-      labelAr: 'قاعة الواحة',
-      labelEn: 'Al Waha Room',
-      icon: Building2,
-      code: 'WAHA-02'
-    },
+  const roomNavItems = rooms.map((r) => ({
+    id: r.id === 'room-dana' ? 'dana' : r.id === 'room-waha' ? 'waha' : r.id,
+    labelAr: r.nameAr.startsWith('قاعة') ? r.nameAr : `قاعة ${r.nameAr}`,
+    labelEn: r.nameEn.toLowerCase().includes('room') ? r.nameEn : `${r.nameEn} Room`,
+    icon: Building2,
+    code: r.code
+  }));
+
+  const navItems: {
+    id: string;
+    labelAr: string;
+    labelEn: string;
+    icon: typeof Building2;
+    code?: string;
+  }[] = [
+    ...roomNavItems,
     {
       id: 'bookings',
       labelAr: 'سجل الحجوزات',

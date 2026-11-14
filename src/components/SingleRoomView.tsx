@@ -47,6 +47,7 @@ import {
   formatTimeRange12,
   timeToMinutes
 } from '../utils/dateUtils';
+import { computeMeetingLifecycleState } from '../services/meetingLifecycleService';
 import heroWahaImg from '../assets/images/hero_conference_room_waha_1793953314083.jpg';
 import heroCleanImg from '../assets/images/hero_conference_room_clean_1793953313123.jpg';
 
@@ -411,8 +412,14 @@ export const SingleRoomView: React.FC<SingleRoomViewProps> = ({
     setTimeout(() => setSpecsSaveSuccess(false), 3500);
   };
 
-  // Current real-time clock in Dubai
-  const liveDubaiTime = getActualCurrentTime();
+  // Current real-time clock in Dubai (auto-refreshes every 5s so table & availability stay live)
+  const [liveDubaiTime, setLiveDubaiTime] = useState<string>(() => getActualCurrentTime());
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setLiveDubaiTime(getActualCurrentTime());
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
   const currentMinutes = timeToMinutes(liveDubaiTime);
 
   // All bookings for THIS specific room
@@ -673,10 +680,20 @@ export const SingleRoomView: React.FC<SingleRoomViewProps> = ({
               {/* Room Title (Arabic & English) */}
               <div className="space-y-0.5">
                 <h2 className="text-2xl sm:text-[34px] font-black text-white leading-tight tracking-tight drop-shadow-xs" dir="rtl">
-                  {language === 'ar' ? `قاعة ${room.nameAr}` : `${room.nameEn} Hall`}
+                  {language === 'ar'
+                    ? room.nameAr.startsWith('قاعة')
+                      ? room.nameAr
+                      : `قاعة ${room.nameAr}`
+                    : `${room.nameEn} Hall`}
                 </h2>
                 <p className="text-sm sm:text-[19px] font-extrabold text-white/95 tracking-tight leading-snug">
-                  {room.id === 'room-dana' ? 'Al Dana Meeting Room' : 'Al Waha Meeting Room'}
+                  {room.id === 'room-dana'
+                    ? 'Al Dana Meeting Room'
+                    : room.id === 'room-waha'
+                    ? 'Al Waha Meeting Room'
+                    : room.nameEn.toLowerCase().includes('room')
+                    ? room.nameEn
+                    : `${room.nameEn} Meeting Room`}
                 </p>
               </div>
 
@@ -1676,31 +1693,31 @@ export const SingleRoomView: React.FC<SingleRoomViewProps> = ({
                             </td>
                             <td className="p-3 text-center">
                               {(() => {
-                                const isOngoing =
-                                  b.status === 'confirmed' &&
-                                  isToday &&
-                                  currentMinutes >= timeToMinutes(b.startTime) &&
-                                  currentMinutes < timeToMinutes(b.endTime);
+                                const lifecycleState = computeMeetingLifecycleState(
+                                  b,
+                                  currentDate,
+                                  liveDubaiTime
+                                );
 
                                 return (
                                   <span
                                     className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                      b.status === 'confirmed'
-                                        ? isOngoing
-                                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                          : 'bg-emerald-100 text-emerald-800'
-                                        : b.status === 'completed'
-                                        ? 'bg-slate-100 text-slate-700'
+                                      lifecycleState === 'ongoing'
+                                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                        : lifecycleState === 'upcoming'
+                                        ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                        : lifecycleState === 'completed'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                         : 'bg-rose-100 text-rose-800'
                                     }`}
                                   >
-                                    {b.status === 'confirmed'
-                                      ? isOngoing
-                                        ? 'جاري الآن'
-                                        : 'مؤكد'
-                                      : b.status === 'completed'
+                                    {lifecycleState === 'ongoing'
+                                      ? 'جاري الآن'
+                                      : lifecycleState === 'upcoming'
+                                      ? 'القادم'
+                                      : lifecycleState === 'completed'
                                       ? 'مكتمل'
-                                      : 'ملغي'}
+                                      : 'ملغى'}
                                   </span>
                                 );
                               })()}
@@ -1809,11 +1826,12 @@ export const SingleRoomView: React.FC<SingleRoomViewProps> = ({
                     const canCancel =
                       !isCancelled && (canManage || currentUser.id === b.userId);
 
-                    const isOngoing =
-                      b.status === 'confirmed' &&
-                      isToday &&
-                      currentMinutes >= timeToMinutes(b.startTime) &&
-                      currentMinutes < timeToMinutes(b.endTime);
+                    const lifecycleState = computeMeetingLifecycleState(
+                      b,
+                      currentDate,
+                      liveDubaiTime
+                    );
+                    const isOngoing = lifecycleState === 'ongoing';
 
                     return (
                       <div
@@ -1833,22 +1851,22 @@ export const SingleRoomView: React.FC<SingleRoomViewProps> = ({
                           </span>
                           <span
                             className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              b.status === 'confirmed'
-                                ? isOngoing
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                                  : 'bg-emerald-100 text-emerald-800'
-                                : b.status === 'completed'
-                                ? 'bg-slate-100 text-slate-700'
+                              lifecycleState === 'ongoing'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                : lifecycleState === 'upcoming'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : lifecycleState === 'completed'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 : 'bg-rose-100 text-rose-800'
                             }`}
                           >
-                            {b.status === 'confirmed'
-                              ? isOngoing
-                                ? 'جاري الآن'
-                                : 'مؤكد'
-                              : b.status === 'completed'
+                            {lifecycleState === 'ongoing'
+                              ? 'جاري الآن'
+                              : lifecycleState === 'upcoming'
+                              ? 'القادم'
+                              : lifecycleState === 'completed'
                               ? 'مكتمل'
-                              : 'ملغي'}
+                              : 'ملغى'}
                           </span>
                         </div>
 

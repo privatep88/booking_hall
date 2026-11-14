@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Booking } from '../types';
+import { Booking, MeetingLifecycleState } from '../types';
 import {
   CalendarCheck2,
   Search,
@@ -22,18 +22,25 @@ import {
   ArrowDown
 } from 'lucide-react';
 import { exportToExcelCsv } from '../services/analyticsService';
-import { formatTimeRange12 } from '../utils/dateUtils';
+import {
+  formatTimeRange12,
+  getActualCurrentDate,
+  getActualCurrentTime
+} from '../utils/dateUtils';
+import { computeMeetingLifecycleState } from '../services/meetingLifecycleService';
 
 interface BookingsListViewProps {
   onSelectBooking: (booking: Booking) => void;
   onOpenNewBooking: () => void;
   onEditBooking?: (booking: Booking) => void;
+  highlightedBookingId?: string | null;
 }
 
 export const BookingsListView: React.FC<BookingsListViewProps> = ({
   onSelectBooking,
   onOpenNewBooking,
-  onEditBooking
+  onEditBooking,
+  highlightedBookingId
 }) => {
   const {
     bookings,
@@ -65,6 +72,27 @@ export const BookingsListView: React.FC<BookingsListViewProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<Booking | null>(null);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+  const [liveDubaiDate, setLiveDubaiDate] = useState<string>(() => getActualCurrentDate());
+  const [liveDubaiTime, setLiveDubaiTime] = useState<string>(() => getActualCurrentTime());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setLiveDubaiDate(getActualCurrentDate());
+      setLiveDubaiTime(getActualCurrentTime());
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!highlightedBookingId) return;
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector(`[data-booking-id="${highlightedBookingId}"]`);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [highlightedBookingId]);
 
   const isAdmin = currentUser.role === 'super_admin' || currentUser.role === 'admin';
   const totalCancelledCount = useMemo(
@@ -171,18 +199,29 @@ export const BookingsListView: React.FC<BookingsListViewProps> = ({
     exportToExcelCsv('سجل_حجوزات_قاعات_ساعد', headers, rows);
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300';
+  const getLifecycleBadge = (state: MeetingLifecycleState) => {
+    switch (state) {
+      case 'upcoming':
+        return {
+          classes: 'bg-blue-100 text-blue-800 border-blue-300',
+          label: 'القادم'
+        };
+      case 'ongoing':
+        return {
+          classes: 'bg-amber-100 text-amber-800 border-amber-300',
+          label: 'جاري الآن'
+        };
       case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-300';
+        return {
+          classes: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+          label: 'مكتمل'
+        };
       case 'cancelled':
-        return 'bg-rose-100 text-rose-800 border-rose-300';
-      case 'pending':
-        return 'bg-amber-100 text-amber-800 border-amber-300';
       default:
-        return 'bg-slate-100 text-slate-700 border-slate-300';
+        return {
+          classes: 'bg-rose-100 text-rose-800 border-rose-300',
+          label: 'ملغى'
+        };
     }
   };
 
@@ -535,10 +574,20 @@ export const BookingsListView: React.FC<BookingsListViewProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
-                  {filteredBookings.map((b) => (
+                  {filteredBookings.map((b) => {
+                    const lifecycleState = computeMeetingLifecycleState(b, liveDubaiDate, liveDubaiTime);
+                    const badge = getLifecycleBadge(lifecycleState);
+                    const isHighlighted = highlightedBookingId === b.id;
+
+                    return (
                     <tr
                       key={b.id}
-                      className="hover:bg-blue-50/40 transition-colors cursor-pointer"
+                      data-booking-id={b.id}
+                      className={`transition-colors cursor-pointer ${
+                        isHighlighted
+                          ? 'bg-emerald-50/90 ring-2 ring-inset ring-[#10A67A]'
+                          : 'hover:bg-blue-50/40'
+                      }`}
                       onClick={() => onSelectBooking(b)}
                     >
                       <td className="p-3.5 font-mono font-bold text-blue-900">{b.bookingNumber}</td>
@@ -559,8 +608,8 @@ export const BookingsListView: React.FC<BookingsListViewProps> = ({
                       <td className="p-3.5 font-mono font-semibold text-slate-800">{b.date}</td>
                       <td className="p-3.5 font-mono text-slate-700 text-xs">{formatTimeRange12(b.startTime, b.endTime)}</td>
                       <td className="p-3.5 text-center">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${getStatusBadge(b.status)}`}>
-                          {b.status === 'confirmed' ? 'مؤكد' : b.status === 'completed' ? 'مكتمل' : b.status === 'cancelled' ? 'ملغى' : b.status}
+                        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badge.classes}`}>
+                          {badge.label}
                         </span>
                       </td>
                       <td className="p-3.5 text-center">
@@ -612,25 +661,36 @@ export const BookingsListView: React.FC<BookingsListViewProps> = ({
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* Mobile Cards View (< sm) */}
             <div className="sm:hidden divide-y divide-slate-100 p-3 space-y-3">
-              {filteredBookings.map((b) => (
+              {filteredBookings.map((b) => {
+                const lifecycleState = computeMeetingLifecycleState(b, liveDubaiDate, liveDubaiTime);
+                const badge = getLifecycleBadge(lifecycleState);
+                const isHighlighted = highlightedBookingId === b.id;
+
+                return (
                 <div
                   key={b.id}
+                  data-booking-id={b.id}
                   onClick={() => onSelectBooking(b)}
-                  className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2.5 transition-all active:scale-[0.99] cursor-pointer"
+                  className={`p-3.5 rounded-xl border shadow-2xs space-y-2.5 transition-all active:scale-[0.99] cursor-pointer ${
+                    isHighlighted
+                      ? 'border-[#10A67A] bg-emerald-50/85 ring-2 ring-[#10A67A]/30'
+                      : 'border-slate-200 bg-white'
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono font-bold text-xs text-blue-900 bg-blue-50 px-2 py-0.5 rounded-md">
                       {b.bookingNumber}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadge(b.status)}`}>
-                      {b.status === 'confirmed' ? 'مؤكد' : b.status === 'completed' ? 'مكتمل' : b.status === 'cancelled' ? 'ملغى' : b.status}
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${badge.classes}`}>
+                      {badge.label}
                     </span>
                   </div>
 
@@ -700,7 +760,8 @@ export const BookingsListView: React.FC<BookingsListViewProps> = ({
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </>
         )}

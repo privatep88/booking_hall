@@ -5,7 +5,8 @@ import {
   setDoc,
   deleteDoc,
   onSnapshot,
-  writeBatch
+  writeBatch,
+  runTransaction
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import {
@@ -85,6 +86,7 @@ interface AppContextType {
   language: 'ar' | 'en';
   theme: 'light' | 'dark';
   currentDate: string;
+  isOnline: boolean;
   setCurrentUser: (user: User) => void;
   setLanguage: (lang: 'ar' | 'en') => void;
   setTheme: (theme: 'light' | 'dark') => void;
@@ -104,8 +106,9 @@ interface AppContextType {
   checkInBooking: (id: string) => void;
   checkOutBooking: (id: string) => void;
   toggleRoomMaintenance: (roomId: string, isMaintenance: boolean, reason?: string) => void;
-  addRoom: (roomData: Omit<Room, 'id'>) => void;
+  addRoom: (roomData: Omit<Room, 'id'>) => Room;
   updateRoom: (roomId: string, data: Partial<Room>) => void;
+  deleteRoom: (roomId: string) => void;
   addDepartment: (deptData: Omit<Department, 'id'>) => void;
   updateDepartment: (deptId: string, data: Partial<Department>) => void;
   deleteDepartment: (deptId: string) => void;
@@ -169,6 +172,9 @@ if (typeof window !== 'undefined') {
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentDate, setCurrentDate] = useState<string>(() => getActualCurrentDate());
+  const [isOnline, setIsOnline] = useState<boolean>(() =>
+    typeof navigator !== 'undefined' ? navigator.onLine : true
+  );
 
   const seededRef = useRef({
     rooms: false,
@@ -179,6 +185,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     bookings: false,
     logs: false
   });
+  const completingIdsRef = useRef<Set<string>>(new Set());
+  const bookingsRef = useRef<Booking[]>([]);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Keep currentDate in sync with actual Dubai timezone clock
   useEffect(() => {
@@ -645,75 +664,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persistToFirestore('auditLogs', log.id, log, OperationType.CREATE);
   };
 
-  // Auto-complete bookings when their actual scheduled end time has passed
+  // Keep ref in sync with latest bookings for async lifecycle checks
   useEffect(() => {
-    const checkAndCompletePastBookings = () => {
+    bookingsRef.current = bookings;
+  }, [bookings]);
+
+  // Auto-complete bookings when their actual scheduled end time has passed (idempotent & offline-safe)
+  useEffect(() => {
+    let isCancelled = false;
+
+    const checkAndCompletePastBookings = async () => {
+      // Do not emit unconfirmed completions while offline; wait until reconnection
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return;
+      }
+
       const today = getActualCurrentDate();
       const timeNow = getActualCurrentTime();
       const timeNowMin = timeToMinutes(timeNow);
-      const nowIso = new Date().toISOString();
 
-      setBookings((prev) => {
-        let hasChanges = false;
-        const newlyCompleted: Booking[] = [];
+      const candidates = bookingsRef.current.filter((b) => {
+        if (b.status !== 'confirmed' && b.status !== 'pending') return false;
+        if (completingIdsRef.current.has(b.id)) return false;
+        return (
+          b.date < today ||
+          (b.date === today && timeToMinutes(b.endTime) <= timeNowMin)
+        );
+      });
 
-        const updated = prev.map((b) => {
-          if (b.status === 'confirmed' || b.status === 'pending') {
-            const isPast =
-              b.date < today ||
-              (b.date === today && timeToMinutes(b.endTime) <= timeNowMin);
+      if (candidates.length === 0) return;
 
-            if (isPast) {
-              hasChanges = true;
-              const completedBooking: Booking = {
-                ...b,
-                status: 'completed' as BookingStatus,
-                endedAt: b.endedAt || `${b.date}T${b.endTime}:00`,
-                updatedAt: nowIso
-              };
-              newlyCompleted.push(completedBooking);
-              return completedBooking;
+      for (const candidate of candidates) {
+        if (isCancelled) break;
+        if (typeof navigator !== 'undefined' && !navigator.onLine) break;
+
+        completingIdsRef.current.add(candidate.id);
+        const nowIso = new Date().toISOString();
+
+        try {
+          const result = await runTransaction(db, async (tx) => {
+            const bookingRef = doc(db, 'bookings', candidate.id);
+            const snap = await tx.get(bookingRef);
+
+            const targetData = snap.exists() ? (snap.data() as Booking) : candidate;
+
+            // Respect server cancellation, rejection, or already-completed state
+            if (targetData.status === 'cancelled' || targetData.status === 'rejected') {
+              return { transitioned: false, booking: targetData };
             }
-          }
-          return b;
-        });
+            if (targetData.status === 'completed') {
+              return { transitioned: false, booking: targetData };
+            }
 
-        if (hasChanges) {
-          setTimeout(() => {
-            newlyCompleted.forEach((cb) => {
-              persistToFirestore('bookings', cb.id, cb, OperationType.UPDATE);
+            // Re-verify against server schedule in case another tab/admin extended the meeting
+            const stillPast =
+              targetData.date < today ||
+              (targetData.date === today && timeToMinutes(targetData.endTime) <= timeNowMin);
+            if (!stillPast) {
+              return { transitioned: false, booking: targetData };
+            }
+
+            const completedBooking: Booking = {
+              ...targetData,
+              status: 'completed' as BookingStatus,
+              endedAt: targetData.endedAt || `${targetData.date}T${targetData.endTime}:00`,
+              updatedAt: nowIso
+            };
+
+            tx.set(bookingRef, sanitizeForFirestore(completedBooking));
+            return { transitioned: true, booking: completedBooking };
+          });
+
+          if (!isCancelled) {
+            setBookings((prev) =>
+              prev.map((item) => (item.id === result.booking.id ? result.booking : item))
+            );
+
+            if (result.transitioned) {
               logAudit(
                 'CHECK_OUT',
                 'BOOKING',
-                cb.id,
-                `تحول الحجز رقم (${cb.bookingNumber}) لقاعة "${cb.roomNameAr}" تلقائياً إلى حالة «مكتمل» لانتهاء وقت الحجز الفعلي (${formatTimeRange12(cb.startTime, cb.endTime, 'ar')})`
+                result.booking.id,
+                `تحول الحجز رقم (${result.booking.bookingNumber}) لقاعة "${result.booking.roomNameAr}" تلقائياً إلى حالة «مكتمل» لانتهاء وقت الحجز الفعلي (${formatTimeRange12(result.booking.startTime, result.booking.endTime, 'ar')})`
               );
-            });
-          }, 0);
-
-          return updated;
+            }
+          }
+        } catch {
+          // Transient offline/network error: keep candidate confirmed until connectivity is restored
+        } finally {
+          completingIdsRef.current.delete(candidate.id);
         }
-
-        return prev;
-      });
+      }
     };
 
     checkAndCompletePastBookings();
-    const interval = setInterval(checkAndCompletePastBookings, 10000);
+    const interval = setInterval(checkAndCompletePastBookings, 5000);
 
     const handleVisibilityOrFocus = () => {
       checkAndCompletePastBookings();
     };
 
     window.addEventListener('focus', handleVisibilityOrFocus);
+    window.addEventListener('online', handleVisibilityOrFocus);
     document.addEventListener('visibilitychange', handleVisibilityOrFocus);
 
     return () => {
+      isCancelled = true;
       clearInterval(interval);
       window.removeEventListener('focus', handleVisibilityOrFocus);
+      window.removeEventListener('online', handleVisibilityOrFocus);
       document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
     };
-  }, [currentDate]);
+  }, [currentDate, isOnline]);
 
   const createBooking = (
     data: Omit<Booking, 'id' | 'bookingNumber' | 'createdAt' | 'updatedAt' | 'status'> & {
@@ -880,7 +942,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       endedAt:
         finalStatus === 'completed'
           ? merged.endedAt || `${merged.date}T${merged.endTime}:00`
-          : merged.endedAt,
+          : undefined,
       updatedAt: new Date().toISOString()
     };
 
@@ -1079,28 +1141,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const addRoom = (roomData: Omit<Room, 'id'>) => {
+  const addRoom = (roomData: Omit<Room, 'id'>): Room => {
     const newRoom: Room = {
       ...roomData,
       id: `room-${Date.now()}`
     };
-    setRooms((prev) => [...prev, newRoom]);
+    setRooms((prev) => {
+      const next = [...prev, newRoom];
+      try {
+        localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
     persistToFirestore('rooms', newRoom.id, newRoom, OperationType.CREATE);
-    logAudit('CREATE', 'ROOM', newRoom.id, `تم إضافة قاعة جديدة في النظام: "${newRoom.nameAr}"`);
+    logAudit('CREATE', 'ROOM', newRoom.id, `تمت إضافة قاعة اجتماعات جديدة في النظام: "${newRoom.nameAr}" (${newRoom.code})`);
+    return newRoom;
   };
 
   const updateRoom = (roomId: string, data: Partial<Room>) => {
-    setRooms((prev) =>
-      prev.map((r) => {
+    setRooms((prev) => {
+      const next = prev.map((r) => {
         if (r.id === roomId) {
           const updated = { ...r, ...data };
           persistToFirestore('rooms', roomId, updated, OperationType.UPDATE);
           return updated;
         }
         return r;
-      })
-    );
+      });
+      try {
+        localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
     logAudit('UPDATE', 'ROOM', roomId, `تم تحديث بيانات القاعة (${roomId})`);
+  };
+
+  const deleteRoom = (roomId: string) => {
+    const targetRoom = rooms.find((r) => r.id === roomId);
+    setRooms((prev) => {
+      const next = prev.filter((r) => r.id !== roomId);
+      try {
+        localStorage.setItem(STORAGE_KEYS.ROOMS, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+    removeFromFirestore('rooms', roomId);
+    if (targetRoom) {
+      logAudit(
+        'SETTINGS_UPDATE',
+        'ROOM',
+        roomId,
+        `تم حذف قاعة الاجتماعات من النظام: "${targetRoom.nameAr}" (${targetRoom.code})`
+      );
+    }
   };
 
   const addDepartment = (deptData: Omit<Department, 'id'>) => {
@@ -1460,6 +1559,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         language,
         theme,
         currentDate,
+        isOnline,
         setCurrentUser,
         setLanguage,
         setTheme,
@@ -1473,6 +1573,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleRoomMaintenance,
         addRoom,
         updateRoom,
+        deleteRoom,
         addDepartment,
         updateDepartment,
         deleteDepartment,
